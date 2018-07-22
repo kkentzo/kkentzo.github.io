@@ -16,3 +16,5 @@ jekyll-archives:
   permalinks:
     category: /categories/:name/
     tag: /tags/:name/
+
+google_analytics: UA-122728143-1
