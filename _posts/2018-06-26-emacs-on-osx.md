@@ -45,8 +45,10 @@ systems, not just MacOS (`ns`).
 
 It turns out that this problem can be solved using the
 [`exec-path-from-shell`](https://github.com/purcell/exec-path-from-shell)
-package.
-TODO ADD LINK HERE AND DESCRIBE PACKAGE
+package. This package essentially executes a shell, grabs the values
+of certain environmental variables (which can be customized as well)
+and sets them (`setenv`) in the current environment in which emacs is
+operating.
 
 Add the following in your emacs initialization file to get the package
 working:
