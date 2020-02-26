@@ -1,5 +1,5 @@
 ---
-title: A legit use case for the `goto` abomination
+title: A legit use case for the goto abomination
 layout: post
 tags:
     - c
