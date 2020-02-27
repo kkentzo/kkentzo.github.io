@@ -17,7 +17,7 @@ I had never used the goto statement myself until I started writing C code for a 
 
 Let's see a (somewhat contrived) example: suppose that we have to parse a json string of the form `"{"name": "John"}` in a C program using the well-known library [cJSON](https://github.com/DaveGamble/cJSON). For this purpose, we define a `handler` function (that maybe validates and aggregates the attributes in some way - it doesn't really matter) and a `process_json` function that parses the json string and calls `handler` for each attribute that is parsed, as follows:
 
-```C
+```c
 // return 0 for success and -1 for error
 int handler(char *key, char *val) {
     // some condition gives an error
@@ -52,7 +52,7 @@ Now, the above code works fine but it is a little bit repetitive since we have t
 
 Let's see how we can use the `goto` statement in order to concentrate all of our clean-up code in one place and reduce the likelihood of a leak. The idea is to use an `end` label and drive error exit paths to that label using `goto` statements as follows:
 
-```C
+```c
 int process_json(const char *json) {
     int rc = 0;
     cJSON *root = cJSON_Parse(json);
