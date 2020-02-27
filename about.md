@@ -6,13 +6,18 @@ permalink: /about/
 
 Hi there and welcome to my blog! I am a computer scientist with
 previous experience in [academic
-research](https://scholar.google.gr/citations?user=-AYr7GAAAAAJ&hl=en),
-currently working as a software engineer / architect / project manager
-in the travel industry.
+research](https://scholar.google.gr/citations?user=-AYr7GAAAAAJ&hl=en)
+and the industry, currently working as a software engineer / architect
+in the energy sector.
 
-This is the place where I am going to be writing mostly about
-technical topics that I am interested at (emacs, golang, ruby, lisp
-etc.).
+I am comfortable working across the full spectrum of the software
+development process including its "hard" (engineering, architecture,
+streamlining operations) and "soft" (team management, productivity,
+communication, learning and self-improvement) aspects.
+
+This is the place where I am going to be writing about topics that I
+am interested at mostly focused around technology. These include
+emacs, golang, C, ruby, devops, productivity etc.
 
 Feel free to contact me through my
 [professional](https://www.linkedin.com/in/kkentzo) and
