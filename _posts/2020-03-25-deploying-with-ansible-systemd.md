@@ -8,8 +8,6 @@ tags:
     - golang
 ---
 
-## Introduction
-
 You may be a sole developer or member of a small development team with no dedicated ops people. You will probably have a handful of small-ish services, perhaps a few cronjobs and a couple of VPSs to run them on. Or you may have one or more home servers at home and would like to automate the deployment of custom or open source tools and services. What are your options?
 
 At one end of the spectrum, there's the current kubernetes zeitgeist as recommended™ by the internetz. However, it may be that you can't pay the price (i.e. time) or simply do not have the desire to ride the steep learning curve that this path entails. On the other end of the spectrum, there's always `rsync`/`scp` and bash scripts but you'd like something better than that (including process management, logs, infrastructure as code checked into a git repo etc.). So, is there anything worthwile in between these two extremes?
