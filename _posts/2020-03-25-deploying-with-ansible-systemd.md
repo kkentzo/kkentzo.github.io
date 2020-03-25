@@ -8,11 +8,11 @@ tags:
     - golang
 ---
 
-You may be a sole developer or member of a small development team with no dedicated ops people. You will probably have a handful of small-ish services, perhaps a few cronjobs and a couple of VPSs to run them on. Or you may have one or more home servers at home and would like to automate the deployment of custom or open source tools and services. What are your options?
+You may be a sole developer or member of a small development team with no dedicated ops people. You will probably have a handful of small-ish services, perhaps a few cronjobs and a couple of VPSs to run them on. Or you may have one or more servers at home and would like to automate the deployment of custom or open source tools and services. What are your options?
 
 At one end of the spectrum, there's the current kubernetes zeitgeist as recommended™ by the internetz. However, it may be that you can't pay the price (i.e. time) or simply do not have the desire to ride the steep learning curve that this path entails. On the other end of the spectrum, there's always `rsync`/`scp` and bash scripts but you'd like something better than that (including process management, logs, infrastructure as code checked into a git repo etc.). So, is there anything worthwile in between these two extremes?
 
-This article is about how to deploy and run a service to a remote server using ansible and systemd. All the "configuration" that is neccessary to do that will be checked into a git repo and will be easily reproducible on an arbitrary set of servers (including your localhost) without the need to log into the servers and do any manual work (apart from setting up passwordless ssh access - but you already have that, right?). Now, a few words about the components that we are going to use.
+This article is about how to deploy and run a service in a remote server using ansible and systemd. All the "configuration" that is neccessary to do that will be checked into a git repo and will be easily reproducible on an arbitrary set of servers (including your localhost) without the need to log into the servers and do any manual work (apart from setting up passwordless ssh access - but [you already have that](https://www.digitalocean.com/community/tutorials/how-to-configure-ssh-key-based-authentication-on-a-linux-server), right?). Now, a few words about the components that we are going to use.
 
 [Ansible](https://www.ansible.com/) is a tool for automating task execution in remote servers. It runs locally on your development machine and can connect to a specified set of servers via ssh in order to execute a series of tasks without the need of an "agent" process on the server(s). There's a [wide variety of modules](https://docs.ansible.com/ansible/latest/modules/modules_by_category.html) that can accomplish common tasks such as creating users and groups, installing dependencies, copying files and many more. We will focus on the absolutely necessary in this guide, but those who would like to do more there's this [nice tutorial](https://serversforhackers.com/c/an-ansible2-tutorial) as well as ansible's [official documentation](https://docs.ansible.com/ansible/latest/user_guide/intro_getting_started.html).
 
@@ -24,7 +24,7 @@ For our demonstration, we will be using a simple custom service written in Go, w
 
 We will be needing the following on our local (development) machine:
 
-* a [working Go installation](https://golang.org/doc/install) in order to build our little service
+* a [working Go installation](https://golang.org/doc/install) in order to build our service
 * the [ansible tool](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
 * the `make` program (check your system using `which make`)
 
