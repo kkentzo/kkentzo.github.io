@@ -10,7 +10,7 @@ research](https://scholar.google.gr/citations?user=-AYr7GAAAAAJ&hl=en)
 and the industry, currently working as a software engineer / architect
 in the energy sector.
 
-I am comfortable working across the full spectrum of the software
+I enjoy working across the full spectrum of the software
 development process including its "hard" (engineering, architecture,
 streamlining operations) and "soft" (team management, productivity,
 communication, learning and self-improvement) aspects.
