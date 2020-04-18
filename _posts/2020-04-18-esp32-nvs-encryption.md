@@ -32,7 +32,7 @@ In the build-time encryption method, the NVS partition containing all the necess
 
 In both cases, a separate partition is necessary for storing the nvs encryption key. ESP-IDF provides a partition subtype for this purpose (type `data` and subtype `nvs_keys`) and handles its encryption transparently via the bootloader.
 
-OK, so let's go through this procedure step-by-step by means of an example.
+The use case that we'd like to demonstrate here is the baking of pre-existing data (unique device ID, security certificates) into the device at compile time. OK, so let's go through this procedure step-by-step by means of an example.
 
 First, we need a custom partition table which can be configured using `idf.py menuconfig` and selecting "Custom Partition Table (CSV)" under the "Partition Table" menu (`CONFIG_PARTITION_TABLE_CUSTOM=y` and `CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"`). Our `partitions.csv` file looks like this:
 
@@ -48,12 +48,12 @@ ota_1,    0,    ota_1,    , 1M,
 nvs_key,  data, nvs_keys,         , 0x1000, encrypted
 ```
 
-This partition table supports 3 app partitions (ESP's standard OTA scheme with 1 factory and 2 OTA partitions), one `nvs` partition (16KB or `0x4000` ) and one `nvs_keys` partition (4KB or `0x1000`). We have only specified partition sizes; the offsets are calculated automatically by the tools. The `encrypted` flag of the `nvs_key` partition instructs the bootloader to automatically encrypt the contents, since we're going to be storing the nvs encryption keys there. (Of course it'd be great if we could do that for the `nvs` partition as well, but this feature is not supported unfortunately as the existence of this article demonstrates...)
+This partition table supports 3 app partitions (ESP's standard OTA scheme with 1 factory and 2 OTA partitions), one 16KB `nvs` partition and one 4KB `nvs_keys` partition. We have only specified partition sizes -- the offsets are calculated automatically by the tools. The `encrypted` flag of the `nvs_key` partition instructs the bootloader to automatically encrypt the contents, since we're going to be storing the nvs encryption keys there. (Of course it'd be great if we could do that for the `nvs` partition as well, but this feature is not supported unfortunately as the existence of this article demonstrates...)
 
 Next, we are going to prepare our nvs image locally by specifying its contents using the CSV format as follows:
 
 ```csv
-# NVS csv file for device_id=efi7ogaaGhoh
+# NVS csv file
 key,type,encoding,value
 device_id,data,string,a_unique_value
 cert,file,string,./path/to/certificate.pem.crt
@@ -72,13 +72,13 @@ However, the resulting image `nvs.bin` will be unencrypted. If instead of the `g
 $ $IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py encrypt nvs.csv encrypted_nvs.bin 0x4000 --keygen --keyfile nvs_keys.bin
 ```
 
-These two images can now be flashed to the device using `esptool.py` (part of the esp-idf distribution).
+These two images can now be flashed to the device using `esptool.py` (part of the esp-idf distribution):
 
 ```bash
 $ esptool.py -p PORT --before default_reset --after no_reset write_flash 0xa000 encrypted_nvs.bin
 ```
 
-where `PORT` is the serial comm address (something like `/dev/cu.usbserial-0001`) and `encrypted_nvs.bin` is the image file that we generated in our previous step. The flash location address `0xa000` can be discovered either by inspecting the esp32 serial output (where the partitions are printed out) or by using the `gen_esp32part.py` utility on the project's partition image (e.g. `gen_esp32part.py build/partition_table/partition-table.bin`).
+where `PORT` is the serial comm device address (something like `/dev/cu.usbserial-0001`) and `encrypted_nvs.bin` is the image file that we generated in our previous step. The flash location address `0xa000` can be discovered either by inspecting the esp32 serial output (where the partitions are printed out) or by using the `gen_esp32part.py` utility on the project's partition image (e.g. `gen_esp32part.py build/partition_table/partition-table.bin`).
 
 The `nvs_keys` image also needs to be downloaded to the device:
 
