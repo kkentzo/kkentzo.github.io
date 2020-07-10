@@ -142,7 +142,7 @@ Now, that we have our systemd unit, let's define [our ansible playbook](https://
     shell: /sbin/nologin
     append: yes
     state: present
-    createhome: no
+    create_home: no
 
 - name: Copy systemd service file to server
   copy:
