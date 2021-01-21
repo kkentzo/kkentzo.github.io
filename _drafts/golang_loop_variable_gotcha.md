@@ -11,8 +11,8 @@ This bit me **again** the other day so what better way to exorcize the
 resulting bug in production code the than to write a small article
 about it?
 
-So, let's raise hands, who among us **has not** written code that looks
-like this:
+So, let's raise hands: who among us **has not** written code that
+looks somewhat like this trivial example:
 
 ```go
 package main
@@ -33,19 +33,19 @@ func main() {
 }
 ```
 
-*(very few hands raised in the audience)*
+*(very few hands raised in the audience)* :grin:
 
-Now, one reasonable assumption (with almost complete certainty because
-there's some concurrency involved as well) would be that this program
-will print the numbers from 1 to 5.
+Now, one reasonable assumption would be that this program will print
+the numbers from 1 to 5.
 
 This assumption would be wrong though; the program consistently prints
-the string `55555` (if the result is different in your computer, which
+the string `55555` (if the result is different on your computer, which
 shouldn't be, then try increasing the sleep duration at the end).
 
 Why is that? The reason is that all goroutines close over the **same**
-variable (`i` in this case) so, when they execute, the variable most
-probably will have assumed its last value (which is `5`).
+variable (`i` in this case) so, when they are executed, the variable
+will have assumed its last value after the completion of the iteration
+loop (which is `5`).
 
 We can observe the difference in behaviour when we introduce a small
 delay at the end of each iteration like so:
@@ -90,7 +90,6 @@ So, what is the correct way of implementing the use case of
 		go func(n int) {
 			fmt.Print(n)
 		}(i)
-		time.Sleep(50 * time.Millisecond)
 	}
     ...
 ```
@@ -110,7 +109,6 @@ as follows:
 		go func() {
 			fmt.Print(n)
 		}()
-		time.Sleep(50 * time.Millisecond)
 	}
     ...
 ```
