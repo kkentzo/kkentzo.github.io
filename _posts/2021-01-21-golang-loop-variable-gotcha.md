@@ -1,5 +1,5 @@
 ---
-title: Golang developers, beware of closing over variables: the case of the for loop
+title: The golang for-loop gotcha
 layout: post
 tags:
     - golang
