@@ -8,8 +8,8 @@ keywords:
 ---
 
 This bit me **again** the other day so what better way to exorcize the
-resulting bug in production code the than to write a small article
-about it?
+resulting bug in production code than to write a small article about
+it?
 
 So, let's raise hands: who among us **has not** written code that
 looks somewhat like this trivial example:
