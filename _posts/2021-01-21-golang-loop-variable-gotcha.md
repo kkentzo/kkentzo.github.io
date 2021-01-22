@@ -114,10 +114,33 @@ as follows:
 ```
 
 It is perhaps worth pointing out that Golang's `for` loop variable
-gotcha is not some idiosyncratic language runtime misbehaviour but,
-rather, a classic example of failing to synchronize concurrent access
-to a shared resource either by locking it or copying it (our preferred
-solution in this case).
+gotcha is not some idiosyncratic language runtime misbehaviour that is
+specific to the `for` loop but, rather, a classic example of failing
+to synchronize concurrent access to a shared resource either by
+locking it or copying it (our preferred solution). Here's an example
+of the same problem without a `for` loop:
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	n := 10
+    // data race
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		fmt.Print(n)
+	}()
+	n = 11
+	time.Sleep(200 * time.Millisecond)
+}
+```
+
+This will print `11` instead of `10`.
 
 So, when closing over an outer variable in something like a
 gouroutine, a good tip would be to always think: who can access the
