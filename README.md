@@ -5,8 +5,12 @@
 Do not use a `.ruby-gemset` file on MacOS. `nokogiri` fails to
 compile. Need to fix...
 
+We need `asdf` and the `ruby` plugin to be installed in the system
+(`asdf plugin add ruby`).
+
 Then:
 
+    $ asdf install
     $ gem install jekyll bundler
     $ bundle install
 
