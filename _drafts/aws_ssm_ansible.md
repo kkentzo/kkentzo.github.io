@@ -1,5 +1,5 @@
 ---
-title: Deploy an application in an EC2 instance without ssh
+title: No-ssh deployment to EC2 using ansible and AWS Systems Manager
 layout: post
 tags:
     - aws
@@ -107,7 +107,8 @@ script containing the command:
 
 The command script essentially checks that these variables are all
 defined and subsequently [dispatches the SSM
-command](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/ssm/send-command.html):
+command](https://awscli.amazonaws.com/v2/documentation/api/latest/reference/ssm/send-command.html)
+(`scripts/ssm_send_command.sh`):
 
 ```bash
 #!/bin/sh
@@ -166,6 +167,8 @@ More specifically, the workflow steps are:
 5. [ec2] Download and execute (locally) the ansible playbook from s3
 6. [ec2] Download the binary from s3 (part of ansible playbook)
 
+![Workflow diagram](/assets/ssm_ansible_workflow.png)
+
 From the above, it is clear that there's some amount of preparatory
 work to be done before that flow can be executed. Before we send the
 SSM command, will need to ensure that:
@@ -198,13 +201,21 @@ We will create an AWS stack with the following resources:
   - allows access to the S3 bucket with the release artifacts
 - an AWS Cloudwatch Log Group to collect the SSM logs (ansible output)
 
-We will express the above in a cloudformation template:
+We will express the above in a cloudformation template (`cloudformation/demo.yml`):
 
 ```yaml
 AWSTemplateFormatVersion: '2010-09-09'
 
 Description: >-
-    Provision the necessary resources for enabling ansible deployment over SSM
+  Provision the necessary resources for enabling ansible deployment over SSM
+
+Parameters:
+  ReleaseArtifactsBucketName:
+    Type: String
+    Description: The name of the release artifacts s3 bucket
+  LogGroupName:
+    Type: String
+    Description: The name of the log group for the ansible execution logs
 
 Resources:
   # ======================================
@@ -215,14 +226,14 @@ Resources:
   AnsibleLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /ssm/ansible/demo
+      LogGroupName: !Ref LogGroupName
       RetentionInDays: 30
 
   # S3 Bucket for release artifacts
   ReleaseArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: "ssm-demo-release-artifacts"
+      BucketName: !Ref ReleaseArtifactsBucketName
       PublicAccessBlockConfiguration:
         BlockPublicPolicy: true
         BlockPublicAcls: true
@@ -243,8 +254,8 @@ Resources:
               - s3:ListBucket
               - s3:GetObject
             Resource:
-              - !Sub "arn:aws:s3:::ssm-demo-release-artifacts"
-              - !Sub "arn:aws:s3:::ssm-demo-release-artifacts/*"
+              - !Sub "arn:aws:s3:::${ReleaseArtifactsBucketName}"
+              - "arn:aws:s3:::${ReleaseArtifactsBucketName}/*"
       Roles:
         - !Ref ServerRole
 
@@ -254,7 +265,9 @@ Resources:
     Properties:
       RoleName: "ssm-demo-server-role"
       ManagedPolicyArns:
+        # enable the instance to serve as an SSM managed node
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        # provide access to Cloudwatch logs (for ansible deployment over SSM)
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -315,13 +328,101 @@ The `demo` user and group are created in the rest of the ansible
 playbook which can be found in its entirety in this
 [repository](https://github.com/kkentzo/deployment-ansible-ssm-systemd-demo).
 
+The port in which our demo service will bind is configurable in
+`ansible/demo.yml`.
+
 ### Bringing it all together
 
-Having established all the pieces of the workflow, we will now
-automate it using `ork` and express the flow in the following
-`Orkfile`:
+Having discussed all the pieces of the solution, we will now automate
+the relevant workflows using `ork` and express the flow in the form of
+`Orkfile` tasks (more details [here](https://github.com/kkentzo/ork)).
+
+As we saw previously, there are two main workflows:
+
+- the management (creation/update) of the relevant AWS resources
+- the deployment / release of the demo application
+
+We will express the the management of the AWS resources by defining 3
+ork tasks: one for creating the CF stack for the first time
+(`cloudformation.create`), one for describing its status
+(`cloudformation.describe`) and one for applying updates
+(`cloudformation.update`). These tasks will make use of the
+corresponding `aws-cli` functionality:
 
 ```yaml
+global:
+  env:
+    - AWS_REGION: eu-central-1
+      RELEASE_ARTIFACTS_BUCKET: ssm-demo-release-artifacts
+      ANSIBLE_LOG_GROUP: "/ssm/ansible/demo"
+
+tasks:
+  - name: cloudformation
+    env:
+      - STACK_TEMPLATE: cloudformation/demo.yml
+        STACK_NAME: demo-ansible-ssm
+    tasks:
+      - name: create
+        description: create the cloudformation stack for the first time
+        actions:
+          - >-
+            aws cloudformation create-stack
+            --region ${AWS_REGION}
+            --stack-name ${STACK_NAME}
+            --template-body "file://${STACK_TEMPLATE}"
+            --capabilities CAPABILITY_NAMED_IAM
+            -- parameters
+            ParameterKey=ReleaseArtifactsBucketName,ParameterValue=${RELEASE_ARTIFACTS_BUCKET}
+            ParameterKey=LogGroupName,ParameterValue=${ANSIBLE_LOG_GROUP}
+
+      - name: describe
+        description: show the current status of the cloudformation stack
+        actions:
+          - aws cloudformation describe-stacks --stack-name ${STACK_NAME}
+
+      - name: update
+        description: apply changes to the cloudformation stack
+        actions:
+          - >-
+            aws cloudformation update-stack
+            --region ${AWS_REGION}
+            --stack-name ${STACK_NAME}
+            --template-body "file://${STACK_TEMPLATE}"
+            --capabilities CAPABILITY_NAMED_IAM
+            -- parameters
+            ParameterKey=ReleaseArtifactsBucketName,ParameterValue=${RELEASE_ARTIFACTS_BUCKET}
+            ParameterKey=LogGroupName,ParameterValue=${ANSIBLE_LOG_GROUP}
+```
+
+We can create the stack by running `ork cloudformation.create`; the
+necessary AWS credentials must be properly set up in the shell before
+we execute this command.
+
+Having created these resources, we must now associate our
+(pre-existing) EC2 instance with the instance profile
+(`ssm-demo-server-instance-profile`) by modifying the instance's IAM
+role (e.g. from the web console). We should also verify that our
+instance is indeed visible under AWS System Manager's Managed Node
+Fleet (it may take a while for the instance to appear under the
+fleet).
+
+We are now ready to deploy and release our application by:
+
+- building the application (ork task: `build`)
+- uploading our ansible playbook to s3 (ork task: `ansible.deploy`)
+- upload the binary to S3 and trigger the SSM send command (ork task: `release`)
+
+Here are the definitions of those tasks in the `Orkfile` (we need to
+replace the `INSTANCE_ID` variable in the `Orkfile` with the actual ID
+of our EC2 instance):
+
+```yaml
+global:
+  env:
+    - AWS_REGION: eu-central-1
+      RELEASE_ARTIFACTS_BUCKET: ssm-demo-release-artifacts
+      ANSIBLE_LOG_GROUP: "/ssm/ansible/demo"
+
 tasks:
   - name: build
     description: build the demo binary
@@ -329,7 +430,62 @@ tasks:
       - GOOS: linux
         GOARCH: amd64
     actions:
-      - go build -o bin/demo demo.go
+      - go build -o bin/demo app/demo.go
+
+  - name: ansible.deploy
+    description: deploy the ansible playbooks to AWS S3
+    actions:
+      - zip -r -FS ansible.zip ansible
+      - aws s3 cp ansible.zip https://${RELEASE_ARTIFACTS_BUCKET}.s3.${AWS_REGION}.amazonaws.com/ansible.zip
+
+  - name: release
+    description: release the demo application over SSM
+    env:
+      - INSTANCE_ID: i-REPLACE_ME_WITH_ACTUAL_INSTANCE_ID
+        ANSIBLE_PLAYBOOKS_PATH: https://${RELEASE_ARTIFACTS_BUCKET}.s3.${AWS_REGION}.amazonaws.com/ansible.zip
+        PLAYBOOK_FILE: ansible/demo.yml
+    depends_on:
+      - build
+      - ansible.deploy
+    actions:
+      - aws s3 cp bin/demo s3://${RELEASE_ARTIFACTS_BUCKET}/demo
+      - ./scripts/ssm_send_command.sh
 ```
 
+Tasks `build` and `ansible.deploy` are expressed as dependencies of
+task `release` (see `depends_on` attribute, so it suffices to run `ork
+release` in order to release the application.
+
+It is worth repeating that the ansible playbook will be executed in
+the server, so, once the SSM command is sent to AWS, its progress can
+be inspected by tailing the corresponding Cloudwatch Log Group like
+so:
+
+```bash
+$ aws logs tail /ssm/ansible/demo --follow
+```
+
+Once the playbook is finished, we should be able to perform an http
+request to the service (depending also on the EC2's public IP,
+security group etc. which are out of scope in this guide).
+
 ## Summary
+
+We have seen how to deploy an application to an AWS EC2 instance not
+by going over ssh but by utilizing AWS Systems Manager bringing a lot
+of security-related advantages (IAM authorization, command auditing
+etc.). AWS SSM has a lot more features than the Run Command that we
+used in this guide and it is worth looking over [the
+documentation](https://docs.aws.amazon.com/systems-manager/latest/userguide/what-is-systems-manager.html).
+
+This flow can be applied to any application (i.e. not just golang)
+that can be packaged in an archive and transferred to EC2 via S3 with
+the necessary adjustments in the ansible playbook that is responsible
+for the deployment and release of the application on the EC2 instance.
+
+The source code files that were used in this guide (`Orkfile`,
+cloudformation template, `ssm_send_command` script and the ansible
+playbook) can be found in [this
+repository](https://github.com/kkentzo/deployment-ansible-ssm-systemd-demo).
+
+Hope you enjoyed this!
