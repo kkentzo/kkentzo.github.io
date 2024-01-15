@@ -70,12 +70,18 @@ in `golang` that just returns a greeting along with an http status of
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 )
 
 func main() {
+	var port string
+
+	flag.StringVar(&port, "port", "8080", "Specify the service port")
+	flag.Parse()
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		var name string
 		if name = r.URL.Path[1:]; name == "" {
@@ -83,7 +89,8 @@ func main() {
 		}
 		fmt.Fprintf(w, "hello %s!", name)
 	})
-	log.Fatal(http.ListenAndServe(":9999", nil))
+	log.Printf("Starting service [port=%s]", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
 }
 ```
 
@@ -182,8 +189,8 @@ Let's now do that work.
 ### Creating the AWS resources
 
 For the purpose of this post, we will assume that the EC2 instance
-already exists, has the appropriate security group (permit ports 80
-and 443 incoming tcp, allow all outgoing) and has a public elastic IP.
+already exists, has the appropriate security group and has a public
+elastic IP.
 
 The existing instance must also have the [SSM agent installed and
 running](https://docs.aws.amazon.com/systems-manager/latest/userguide/ssm-agent.html)
@@ -329,7 +336,7 @@ playbook which can be found in its entirety in this
 [repository](https://github.com/kkentzo/deployment-ansible-ssm-systemd-demo).
 
 The port in which our demo service will bind is configurable in
-`ansible/demo.yml`.
+`ansible/demo.yml` (ansible variable `demo_app_port`).
 
 ### Bringing it all together
 
